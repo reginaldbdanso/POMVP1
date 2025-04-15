@@ -15,9 +15,9 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 if not DATABASE_URL:
     # Check if we can connect to PostgreSQL
     try:
-        import psycopg2
-        DATABASE_URL = "postgresql://postgres:postgres@localhost/fastapi_db"
-        print("Using PostgreSQL database")
+        import pymysql
+        DATABASE_URL = "mysql+pymysql://root:@localhost/fastapi_db"
+        print("Using MySQL database")
     except ImportError:
         # Fall back to SQLite
         DATABASE_URL = "sqlite:///./test.db"
