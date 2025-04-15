@@ -10,6 +10,23 @@ from app.models.user import User, UserRole
 from app.schemas.user import TokenData
 import os
 from dotenv import load_dotenv
+import logging
+import os
+
+# Configure logging
+log_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'logs')
+os.makedirs(log_dir, exist_ok=True)
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler(os.path.join(log_dir, 'auth.log')),
+        logging.StreamHandler()  # This keeps console output
+    ]
+)
+
+logger = logging.getLogger(__name__)
 
 # Load environment variables
 load_dotenv()
@@ -20,7 +37,13 @@ ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 # Password hashing
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# Update the password hashing configuration
+pwd_context = CryptContext(
+    schemes=["bcrypt"],
+    deprecated="auto",
+    bcrypt__rounds=12,  # Add explicit rounds
+    bcrypt__ident="2b"  # Specify bcrypt version
+)
 
 # OAuth2 scheme
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
@@ -61,24 +84,40 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
 
 # Get current user
 async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+    # logger.info(f"Received token: {token[:10]}...")  # Log first 10 chars of token for security
+    
+    # print(f"Received token: {token[:10]}...")  # Log first 10 chars of token for security
+    
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:
+        logger.info("Attempting to decode token...")
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        # logger.info(f"Token payload: {payload}")
+        
         user_id: str = payload.get("sub")
         role: str = payload.get("role")
-        if user_id is None:
-            raise credentials_exception
+        
+        # if user_id is None:
+            # pass
+            # logger.error("No user_id found in token")
+            # raise credentials_exception
+            
         token_data = TokenData(user_id=user_id, role=role)
-    except JWTError:
+        logger.info(f"Looking up user with ID: {user_id}")
+        
+        user = db.query(User).filter(User.id == token_data.user_id).first()
+        if user is None:
+            logger.error(f"No user found with ID: {user_id}")
+            raise credentials_exception
+            
+        return user
+    except JWTError as e:
+        logger.error(f"JWT decode error: {str(e)}")
         raise credentials_exception
-    user = db.query(User).filter(User.id == token_data.user_id).first()
-    if user is None:
-        raise credentials_exception
-    return user
 
 # Get current active user
 async def get_current_active_user(current_user: User = Depends(get_current_user)):

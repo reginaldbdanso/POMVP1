@@ -3,3 +3,4 @@
 __pycache__
 app/__pycache__
 app/auth/__pycache__
+app/models/__pycache__/user.cpython-311.pyc

@@ -7,10 +7,10 @@ from app.schemas.purchase_order import PurchaseOrderCreate, PurchaseOrderRespons
 from app.auth.jwt import get_current_active_user
 import uuid
 
-router = APIRouter(prefix="/purchase-orders", tags=["Purchase Orders"])
+router = APIRouter( redirect_slashes=False )
 
 
-@router.post("/", response_model=PurchaseOrderResponse, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=PurchaseOrderResponse, status_code=status.HTTP_201_CREATED)
 async def create_purchase_order(
     purchase_order: PurchaseOrderCreate,
     db: Session = Depends(get_db),
@@ -38,33 +38,44 @@ async def create_purchase_order(
     return new_purchase_order
 
 
-@router.get("/", response_model=List[PurchaseOrderResponse])
+@router.get("", response_model=List[PurchaseOrderResponse])
 async def get_purchase_orders(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
     """Get purchase orders based on user role"""
+    print(f"User role: {current_user.role}, User ID: {current_user.id}")  # Debug user info
+    
     # For employees, return their own purchase orders
     if current_user.role == UserRole.EMPLOYEE:
-        return db.query(PurchaseOrder).filter(PurchaseOrder.requested_by == current_user.id).all()
+        orders = db.query(PurchaseOrder).filter(PurchaseOrder.requested_by == current_user.id).all()
+        print(f"Employee orders found: {len(orders)}")  # Debug count
+        return orders
     
     # For reviewers (specialist, deputy MD, MD), show ones pending their approval
     if current_user.role == UserRole.SPECIALIST:
-        return db.query(PurchaseOrder).filter(PurchaseOrder.status == PurchaseOrderStatus.PENDING).all()
+        orders = db.query(PurchaseOrder).filter(PurchaseOrder.status == PurchaseOrderStatus.PENDING).all()
+        print(f"Specialist pending orders: {len(orders)}")  # Debug count
+        return orders
     
     if current_user.role == UserRole.DEPUTY_MD:
-        return db.query(PurchaseOrder).filter(
+        orders = db.query(PurchaseOrder).filter(
             PurchaseOrder.status == PurchaseOrderStatus.AWAITING_DEPUTY_MD,
             PurchaseOrder.cost <= 1000
         ).all()
+        print(f"Deputy MD pending orders: {len(orders)}")  # Debug count
+        return orders
     
     if current_user.role == UserRole.MD:
-        return db.query(PurchaseOrder).filter(
-            PurchaseOrder.status == PurchaseOrderStatus.AWAITING_MD,
-            PurchaseOrder.cost > 1000
-        ).all()
+        orders = db.query(PurchaseOrder).all()
+        # .filter(
+        #     PurchaseOrder.status == PurchaseOrderStatus.AWAITING_MD,
+        #     PurchaseOrder.cost > 1000
+        # ).all()
+        print(f"MD pending orders: {len(orders)}")  # Debug count
+        return orders
     
-    # Default case (shouldn't reach here with proper role checks)
+    print(f"No matching role condition for: {current_user.role}")  # Debug role match
     return []
 
 
