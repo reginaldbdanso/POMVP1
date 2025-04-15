@@ -1,5 +1,6 @@
-from pydantic import BaseModel, EmailStr, Field
-from typing import Optional, UUID4
+from pydantic import BaseModel, EmailStr
+from typing import Optional
+from uuid import UUID  # Fix: Change UUID4 to UUID
 from datetime import datetime
 from app.models.user import UserRole
 
@@ -20,15 +21,14 @@ class UserUpdate(BaseModel):
     is_active: Optional[bool] = None
 
 class UserResponse(UserBase):
-    id: UUID4
+    id: UUID  # Fix: Change UUID4 to UUID
     name: str
     role: UserRole
     is_active: bool
     created_at: datetime
     
     class Config:
-        orm_mode = True
-        from_attributes = True
+        from_attributes = True  # Remove orm_mode, use only from_attributes
 
 class Token(BaseModel):
     access_token: str
