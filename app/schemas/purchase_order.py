@@ -1,5 +1,6 @@
-from pydantic import BaseModel, Field
-from typing import Optional, List, UUID4
+from pydantic import BaseModel
+from typing import Optional, List
+from uuid import UUID  # Change from UUID4 to UUID
 from datetime import datetime
 from app.models.user import PurchaseOrderStatus, ApprovalStatus, UserRole
 
@@ -21,23 +22,21 @@ class ApprovalCreate(ApprovalBase):
     pass
 
 class ApprovalResponse(ApprovalBase):
-    id: UUID4
-    purchase_order_id: UUID4
-    approved_by: UUID4
+    id: UUID
+    purchase_order_id: UUID
+    approved_by: UUID
     role: str
     approved_at: datetime
     
     class Config:
-        orm_mode = True
-        from_attributes = True
+        from_attributes = True  # Remove orm_mode
 
 class PurchaseOrderResponse(PurchaseOrderBase):
-    id: UUID4
-    requested_by: UUID4
+    id: UUID
+    requested_by: UUID
     status: PurchaseOrderStatus
     created_at: datetime
     approvals: Optional[List[ApprovalResponse]] = []
     
     class Config:
-        orm_mode = True
-        from_attributes = True
+        from_attributes = True  # Remove orm_mode
